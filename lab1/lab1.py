@@ -56,4 +56,3 @@ glutDisplayFunc(display)
 glutReshapeFunc(reshape)
 glutMouseFunc(mouse)
 glutMainLoop()
-
