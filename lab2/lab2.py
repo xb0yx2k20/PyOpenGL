@@ -3,30 +3,19 @@ from OpenGL.GLU import *
 from OpenGL.GLUT import *
 import numpy as np
 
-# Создаем матрицу преобразования объекта
 object_matrix = np.identity(4)
 
-# Обработчик событий мыши для поворота объекта
-mouse_down = False
 last_mouse_x = None
 last_mouse_y = None
 
 def handle_mouse_down(button, state, x, y):
     global mouse_down, last_mouse_x, last_mouse_y
     if button == GLUT_LEFT_BUTTON and state == GLUT_DOWN:
-        mouse_down = True
         last_mouse_x = x
         last_mouse_y = y
 
-def handle_mouse_up(button, state, x, y):
-    global mouse_down
-    if button == GLUT_LEFT_BUTTON and state == GLUT_UP:
-        mouse_down = False
-
 def handle_mouse_move(x, y):
-    global object_matrix, mouse_down, last_mouse_x, last_mouse_y
-    if not mouse_down:
-        return
+    global object_matrix, last_mouse_x, last_mouse_y
     delta_x = x - last_mouse_x
     delta_y = y - last_mouse_y
     rotation_y = np.identity(4)
@@ -44,42 +33,30 @@ def handle_mouse_move(x, y):
     last_mouse_x = x
     last_mouse_y = y
 
-# Обработчик событий клавиатуры для изменения масштаба объекта
+
 scale = 1.0
 
 def mouse_wheel_callback(button, direction, x, y):
     global scale
-
     if direction > 0:
-        # Масштабируем объект при прокручивании колеса вверх
         scale += 0.1
     else:
-        # Масштабируем объект при прокручивании колеса вниз
         scale -= 0.1
-
     glutPostRedisplay()
 
 
-# Основной цикл отрисовки сцены
 def draw_scene():
     global object_matrix, scale
-    # Очищаем экран и устанавливаем цвет фона
-    glClearColor(0.0, 0.0, 0.0, 1.0)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-    # Устанавливаем матрицу в
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
-    
 
-    # Применяем преобразование объекта
     glPushMatrix()
     glMultMatrixf(object_matrix)
 
-    # Изменяем масштаб объекта
     glScalef(scale*0.25, scale*0.25, scale*0.25)
 
-    # Рисуем объект
     glBegin(GL_QUADS)
     # Передняя грань (красная)
     glColor3f(1.0, 0.0, 0.0)
@@ -122,23 +99,42 @@ def draw_scene():
     glutSwapBuffers()
 
 
-# Функция инициализации
+# глобальная переменная-флаг
+wireframe_mode = False
 
+def handle_key_press(key, x, y):
+    global wireframe_mode
+    if key == b'w':
+        wireframe_mode = not wireframe_mode
+        if wireframe_mode:
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+            glDisable(GL_CULL_FACE)
+        else:
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+            glEnable(GL_CULL_FACE)
+    glutPostRedisplay()
 
-# Создаем окно
+def reshape(width, height):
+   aspect = float(width) / float(height)
+   glViewport(0, 0, width, height)
+   glMatrixMode(GL_PROJECTION)
+   glLoadIdentity()
+   if aspect > 1:
+      glOrtho(-aspect, aspect, -1.0, 1.0, -1.0, 1.0)
+   else:
+      glOrtho(-1.0, 1.0, -1.0/aspect, 1.0/aspect, -1.0, 1.0)
+   glMatrixMode(GL_MODELVIEW)
+   glLoadIdentity()
+
 glutInit()
 glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)    
 glutInitWindowSize(600, 600)
 glutCreateWindow(b"PyOpenGL Example")
 glutMouseWheelFunc(mouse_wheel_callback)
 glutReshapeFunc(lambda w, h: glViewport(0, 0, w, h))
-
-# Устанавливаем обработчики событий мыши и клавиатуры
 glutMouseFunc(handle_mouse_down)
 glutMotionFunc(handle_mouse_move)
-
-
-# Инициализируем сцену и запускаем главный цикл
-
+glutKeyboardFunc(handle_key_press)
+glutReshapeFunc(reshape)
 glutDisplayFunc(draw_scene)
 glutMainLoop()
