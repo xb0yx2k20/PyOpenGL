@@ -1,3 +1,4 @@
+import math
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
@@ -36,6 +37,7 @@ def handle_mouse_move(x, y):
 
 scale = 1.0
 
+
 def mouse_wheel_callback(button, direction, x, y):
     global scale
     if direction > 0:
@@ -43,6 +45,8 @@ def mouse_wheel_callback(button, direction, x, y):
     else:
         scale -= 0.1
     glutPostRedisplay()
+
+
 
 
 def draw_scene():
@@ -58,45 +62,50 @@ def draw_scene():
     glScalef(scale*0.25, scale*0.25, scale*0.25)
 
     glBegin(GL_QUADS)
-    # Передняя грань (красная)
-    glColor3f(1.0, 0.0, 0.0)
-    glVertex3f(1, -1, -1)
-    glVertex3f(1, 1, -1)
-    glVertex3f(-1, 1, -1)
-    glVertex3f(-1, -1, -1)
-    # Задняя грань (зеленая)
+
+    glColor3f(0.0, 0.0, 1.0);
+    glVertex3f(1, -1, 1)
+    glVertex3f(1, 1, 1)
+    glVertex3f(-1, 1, 1)
+    glVertex3f(-1, -1, 1)
+
     glColor3f(0.0, 1.0, 0.0)
-    glVertex3f(1, -1, 1)
-    glVertex3f(1, 1, 1)
-    glVertex3f(-1, 1, 1)
     glVertex3f(-1, -1, 1)
-    # Верхняя грань (синяя)
-    glColor3f(0.0, 0.0, 1.0)
+    glVertex3f(-1, 1, 1)
     glVertex3f(-1, 1, -1)
-    glVertex3f(1, 1, -1)
-    glVertex3f(1, 1, 1)
-    glVertex3f(-1, 1, 1)
-    # Нижняя грань (желтая)
-    glColor3f(1.0, 1.0, 0.0)
     glVertex3f(-1, -1, -1)
-    glVertex3f(1, -1, -1)
-    glVertex3f(1, -1, 1)
-    glVertex3f(-1, -1, 1)
-    # Левая грань (голубая)
+
     glColor3f(0.0, 1.0, 1.0)
     glVertex3f(-1, -1, -1)
     glVertex3f(-1, 1, -1)
-    glVertex3f(-1, 1, 1)
-    glVertex3f(-1, -1, 1)
-    # Правая грань (фиолетовая)
-    glColor3f(1.0, 0.0, 1.0)
+    glVertex3f(1, 1, -1)
+    glVertex3f(1, -1, -1)
+
+    glColor3f(1.0, 0.0, 0.0)
     glVertex3f(1, -1, -1)
     glVertex3f(1, 1, -1)
     glVertex3f(1, 1, 1)
     glVertex3f(1, -1, 1)
+
+    glColor3f(1.0, 0.0, 1.0)
+    glVertex3f(1, 1, 1)
+    glVertex3f(1, 1, -1)
+    glVertex3f(-1, 1, -1)
+    glVertex3f(-1, 1, 1)
+
+    glColor3f(1.0, 1.0, 0.0)
+    glVertex3f(1, -1, 1)
+    glVertex3f(-1, -1, 1)
+    glVertex3f(-1, -1, -1)
+    glVertex3f(1, -1, -1)
+
+
+
     glEnd()
+
     glPopMatrix()
     glutSwapBuffers()
+
 
 
 # глобальная переменная-флаг
@@ -104,7 +113,7 @@ wireframe_mode = False
 
 def handle_key_press(key, x, y):
     global wireframe_mode
-    if key == b'w':
+    if key == b'q':
         wireframe_mode = not wireframe_mode
         if wireframe_mode:
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
@@ -112,7 +121,17 @@ def handle_key_press(key, x, y):
         else:
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
             glEnable(GL_CULL_FACE)
+    fl = 0
+    if key == b'e':
+        glMatrixMode(GL_PROJECTION)
+        glPushMatrix()
+        glLoadIdentity()
+        matrix = [1, 0, 0, 0.1, 0, 1, 0, 0.1, 0, 0, 0, -0.1, 0, 0, 0, 1]
+        glPopMatrix()
+        glMultMatrixf(matrix)
     glutPostRedisplay()
+
+
 
 def reshape(width, height):
    aspect = float(width) / float(height)
@@ -126,6 +145,7 @@ def reshape(width, height):
    glMatrixMode(GL_MODELVIEW)
    glLoadIdentity()
 
+
 glutInit()
 glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)    
 glutInitWindowSize(600, 600)
@@ -136,5 +156,6 @@ glutMouseFunc(handle_mouse_down)
 glutMotionFunc(handle_mouse_move)
 glutKeyboardFunc(handle_key_press)
 glutReshapeFunc(reshape)
+glEnable(GL_CULL_FACE)
 glutDisplayFunc(draw_scene)
 glutMainLoop()
