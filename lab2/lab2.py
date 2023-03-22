@@ -1,17 +1,26 @@
-import math
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
+from OpenGL.GLUT.freeglut import *
 import numpy as np
 
 object_matrix = np.identity(4)
 
-last_mouse_x = None
-last_mouse_y = None
+last_mouse_x = 0
+last_mouse_y = 0
+
+def mouse_wheel_callback(wheel, direction, x, y):
+    global scale
+    if direction > 0:
+        scale += 0.1
+    else:
+        scale -= 0.1
+    glutPostRedisplay()
+
 
 def handle_mouse_down(button, state, x, y):
     global mouse_down, last_mouse_x, last_mouse_y
-    if button == GLUT_LEFT_BUTTON and state == GLUT_DOWN:
+    if button == 1 and state == 1:
         last_mouse_x = x
         last_mouse_y = y
 
@@ -33,19 +42,10 @@ def handle_mouse_move(x, y):
     object_matrix = np.dot(rotation_y, object_matrix)
     last_mouse_x = x
     last_mouse_y = y
+    glutPostRedisplay()
 
 
 scale = 1.0
-
-
-def mouse_wheel_callback(button, direction, x, y):
-    global scale
-    if direction > 0:
-        scale += 0.1
-    else:
-        scale -= 0.1
-    glutPostRedisplay()
-
 
 
 
@@ -107,12 +107,11 @@ def draw_scene():
     glutSwapBuffers()
 
 
-
-# глобальная переменная-флаг
 wireframe_mode = False
 
 def handle_key_press(key, x, y):
     global wireframe_mode
+    global scale
     if key == b'q':
         wireframe_mode = not wireframe_mode
         if wireframe_mode:
@@ -121,14 +120,18 @@ def handle_key_press(key, x, y):
         else:
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
             glEnable(GL_CULL_FACE)
-    fl = 0
-    if key == b'e':
+    elif key == b'e':
         glMatrixMode(GL_PROJECTION)
         glPushMatrix()
         glLoadIdentity()
         matrix = [1, 0, 0, 0.1, 0, 1, 0, 0.1, 0, 0, 0, -0.1, 0, 0, 0, 1]
         glPopMatrix()
         glMultMatrixf(matrix)
+    elif key == b'o':
+        scale -= 0.1
+    elif key == b'p':
+        scale += 0.1
+    
     glutPostRedisplay()
 
 
@@ -150,12 +153,13 @@ glutInit()
 glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)    
 glutInitWindowSize(600, 600)
 glutCreateWindow(b"PyOpenGL Example")
-glutMouseWheelFunc(mouse_wheel_callback)
+
 glutReshapeFunc(lambda w, h: glViewport(0, 0, w, h))
-glutMouseFunc(handle_mouse_down)
-glutMotionFunc(handle_mouse_move)
 glutKeyboardFunc(handle_key_press)
 glutReshapeFunc(reshape)
 glEnable(GL_CULL_FACE)
 glutDisplayFunc(draw_scene)
+glutMouseFunc(handle_mouse_down)
+glutMotionFunc(handle_mouse_move)
+#glutMouseWheelFunc(mouse_wheel_callback)
 glutMainLoop()

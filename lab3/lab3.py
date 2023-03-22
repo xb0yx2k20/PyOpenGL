@@ -33,12 +33,13 @@ def handle_mouse_move(x, y):
     object_matrix = np.dot(rotation_y, object_matrix)
     last_mouse_x = x
     last_mouse_y = y
+    glutPostRedisplay()
 
 
 scale = 1.0
 
 
-def mouse_wheel_callback(button, direction, x, y):
+def mouse_wheel_callback(wheel, direction, x, y):
     global scale
     if direction > 0:
         scale += 0.1
@@ -48,7 +49,7 @@ def mouse_wheel_callback(button, direction, x, y):
 
 
 
-n = 10
+n = 8
 def draw_scene():
     global n
     global object_matrix, scale
@@ -60,18 +61,38 @@ def draw_scene():
     glPushMatrix()
     glMultMatrixf(object_matrix)
     glScalef(scale*0.25, scale*0.25, scale*0.25)
-    ang = (math.pi) / n
-    vectors = np.zeros((n+1, 3))
+    globalMas = []
+    vectors = []
 
-    glColor3f(1, 0, 0)
     for i in range(n+1):
-        vectors[i][0], vectors[i][1], vectors[i][2] = math.cos(ang * i), math.sin(ang * i), 0
+        theta = 2 * math.pi * i / n 
+        for j in range(n+1):
+            phi = math.pi * j / n
+            x = math.cos(theta) * math.sin(phi)
+            y = math.sin(theta) * math.sin(phi)
+            z = math.cos(phi)
+            vectors.append([x, y, z])
+            #glVertex3f(x, y, z)
+            #print(vectors, "\n\n")
+            
+        globalMas.append(vectors)
+        vectors = []
 
-    glBegin(GL_POLYGON)
-    for i in range(n + 1):
-        glVertex3f(vectors[i][0], vectors[i][1], 0)
+    globalMas = np.array(globalMas)
+    #print(globalMas)
+    print("\n\n")
+    for i in range(len(globalMas) - 1):
+        glColor3f(0, i % 2, 1)
+        for j in range(len(globalMas[0]) - 1):
+            glBegin(GL_POLYGON)
+            glVertex3f(globalMas[i + 1][j][0], globalMas[i + 1][j][1], globalMas[i + 1][j][2])
+            glVertex3f(globalMas[i][j][0], globalMas[i][j][1], globalMas[i][j][2])
+            glVertex3f(globalMas[i][j + 1][0], globalMas[i][j + 1][1], globalMas[i][j + 1][2])
+            glVertex3f(globalMas[i + 1][j + 1][0], globalMas[i + 1][j + 1][1], globalMas[i + 1][j + 1][2])
+            glEnd()
+
+ 
     
-    glEnd()
 
     glPopMatrix()
     glutSwapBuffers()
@@ -82,10 +103,9 @@ def draw_scene():
 wireframe_mode = False
 
 def handle_key_press(key, x, y):
-    global n
+    global n, scale
     if key == b'q':
         n -= 1
-    fl = 0
     if key == b'e':
         n += 1
     global wireframe_mode
@@ -97,6 +117,10 @@ def handle_key_press(key, x, y):
         else:
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
             glEnable(GL_CULL_FACE)
+    elif key == b'o':
+        scale -= 0.1
+    elif key == b'p':
+        scale += 0.1
     glutPostRedisplay()
 
 
@@ -118,7 +142,6 @@ glutInit()
 glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)    
 glutInitWindowSize(600, 600)
 glutCreateWindow(b"PyOpenGL Example")
-glutMouseWheelFunc(mouse_wheel_callback)
 glutReshapeFunc(lambda w, h: glViewport(0, 0, w, h))
 glutMouseFunc(handle_mouse_down)
 glutMotionFunc(handle_mouse_move)
