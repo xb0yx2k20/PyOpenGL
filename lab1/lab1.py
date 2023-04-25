@@ -4,14 +4,14 @@ from OpenGL.GLU import *
 
 triangle_x = 0.0
 triangle_y = 0.0
-triangle_size = 0.5
+size = 0.5
 
 
 def display():
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
    glPushMatrix()
    glTranslatef(triangle_x, triangle_y, 0)
-   glScalef(triangle_size, triangle_size, triangle_size)
+   glScalef(size, size, size)
    glBegin(GL_TRIANGLES)
    glVertex3f(0, 1, 0)
    glVertex3f(-0.2, 0.2, 0)
