@@ -1,265 +1,176 @@
-package main
+import glfw
+import numpy as np
+from OpenGL.GL import *
 
-import (
-	"log"
-	"math"
-	"runtime"
 
-	"github.com/go-gl/gl/v2.1/gl"
-	"github.com/go-gl/glfw/v3.1/glfw"
-)
+class Point:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
 
-const (
-	PLOTTING_SEGMENTS        = 1
-	SEGMENTS_PLOTTED         = 2
-	CLIPPING                 = 3
-	SIZE                     = 1000
-	ZONE_PADDING_COEFFICIENT = 0.2
-	ACCURACY                 = math.Sqrt2
-)
+    def __str__(self):
+        return "(" + str(self.x) + ", " + str(self.y) + ")"
 
-type point struct {
-	x float64
-	y float64
-}
+    def __eq__(self, other):
+        if isinstance(other, Point):
+            return self.x == other.x and self.y == other.y
+        return False
 
-var (
-	mouse     point
-	stage     int = PLOTTING_SEGMENTS
-	sizeX     int
-	sizeY     int
-	segments  [][2]point
-	points    []point
-	zoneLeft  float64
-	zoneRight float64
-	zoneCeil  float64
-	zoneFloor float64
-)
 
-func clipping() {
-	tempSegments := makeSegments()
-	for _, segment := range tempSegments {
-		midpointClipping(segment, 1)
-	}
-}
+width, height = 720, 640
+points = []
+points_rast = []
 
-func midpointClipping(segment [2]point, count int) {
-	firstCode := getCode(segment[0])
-	secondCode := getCode(segment[1])
-	if firstCode+secondCode == 0 {
-		segments = append(segments, segment)
-		return
-	}
-	if firstCode&secondCode != 0 {
-		return
-	}
-	if count > 2 {
-		segments = append(segments, segment)
-		return
-	}
-	firstPoint := segment[0]
-	if secondCode == 0 {
-		segment[1], segment[0] = firstPoint, segment[1]
-		count++
-		midpointClipping(segment, count)
-		return
-	}
-	for {
-		if math.Hypot(segment[0].x-segment[1].x, segment[0].y-segment[1].y) <= ACCURACY {
-			segment[1], segment[0] = firstPoint, segment[1]
-			count++
-			midpointClipping(segment, count)
-			return
-		}
-		midpoint := point{(segment[0].x + segment[1].x) / 2, (segment[0].y + segment[1].y) / 2}
-		memoizedPoint := segment[0]
-		segment[0] = midpoint
-		firstCode = getCode(segment[0])
-		if firstCode&secondCode != 0 {
-			segment[0], segment[1] = memoizedPoint, midpoint
-		}
-	}
-}
-	
-func getCode(p point) int {
-	code := 0
-	if p.y > zoneFloor {
-		code++
-	}
-	code *= 2
-	if p.x > zoneRight {
-		code++
-	}
-	code *= 2
-	if p.y < zoneCeil {
-		code++
-	}
-	code *= 2
-	if p.x < zoneLeft {
-		code++
-	}
-	return code
-}
+raster_buffer = np.zeros((height, width, 3), dtype=np.uint8)
 
-func makeSegments() [][2]point {
-	temp := [][2]point{}
-	for i := 0; i < len(points)/2; i++ {
-		temp = append(temp, [2]point{points[2*i], points[2*i+1]})
-	}
-	return temp
-}
 
-func drawZone() {
-	zoneLeft = float64(sizeX) * ZONE_PADDING_COEFFICIENT
-	zoneRight = float64(sizeX) * (1 - ZONE_PADDING_COEFFICIENT)
-	zoneFloor = float64(sizeY) * (1 - ZONE_PADDING_COEFFICIENT)
-	zoneCeil = float64(sizeY) * ZONE_PADDING_COEFFICIENT
+def bresenham_line(p0, p1):
+    x0, y0 = p0.x, p0.y
+    x1, y1 = p1.x, p1.y
+    dx = abs(x1 - x0)
+    dy = abs(y1 - y0)
+    sx = -1 if x0 > x1 else 1
+    sy = -1 if y0 > y1 else 1
+    err = dx - dy
+    x = x0
+    y = y0
+    while True:
+        yield x, y
+        if x == x1 and y == y1:
+            break
+        e2 = 2 * err
+        if e2 > -dy:
+            err -= dy
+            x += sx
+        if e2 < dx:
+            err += dx
+            y += sy
 
-	gl.Begin(gl.LINE_LOOP)
-	gl.Vertex2d(zoneLeft, zoneFloor)
-	gl.Vertex2d(zoneLeft, zoneCeil)
-	gl.Vertex2d(zoneRight, zoneCeil)
-	gl.Vertex2d(zoneRight, zoneFloor)
-	gl.End()
-}
 
-func drawSegments() {
-	if stage == PLOTTING_SEGMENTS || stage == SEGMENTS_PLOTTED {
-		gl.Begin(gl.LINES)
-		for _, p := range points {
-			gl.Vertex2d(p.x, p.y)
-		}
-		if stage == PLOTTING_SEGMENTS {
-			gl.Vertex2d(mouse.x, mouse.y)
-		}
-		gl.End()
-	} else {
-		gl.Begin(gl.LINES)
-		for _, segment := range segments {
-			gl.Vertex2d(segment[0].x, segment[0].y)
-			gl.Vertex2d(segment[1].x, segment[1].y)
-		}
-		gl.End()
-	}
-}
+def scanline_fill(start_x, start_y, fill_color):
+    stack = [(start_x, start_y)]
+    old_color = [0, 0, 0]
 
-func cycleInit(w *glfw.Window) {
-	mouse.x, mouse.y = w.GetCursorPos()
+    while stack:
+        x, y = stack.pop()
 
-}
-func closeWindowCallback(w *glfw.Window) {
-	log.Println("ESC")
-	w.SetShouldClose(true)
-}
-func sizeCallback(w *glfw.Window, width int, height int) {
-	sizeX, sizeY = width, height
-	gl.MatrixMode(gl.PROJECTION)
-	gl.LoadIdentity()
-	gl.Ortho(0, float64(width), float64(height), 0, 0, 1)
+        while x >= 0 and np.array_equal(raster_buffer[x, y], old_color):
+            x -= 1
 
-	gl.Viewport(0, 0, int32(width), int32(height))
+        x += 1
+        left = x
 
-	clear()
-}
+        while x < raster_buffer.shape[0] and np.array_equal(raster_buffer[x, y], old_color):
+            raster_buffer[x, y] = fill_color
+            x += 1
 
-func changeStateCallback() {
-	if len(points) >= 2 {
-		stage = stage + 1
-		if stage > CLIPPING {
-			stage = PLOTTING_SEGMENTS
-		}
-		if stage == CLIPPING {
-			clipping()
-		}
-		log.Println(stage)
-	}
-}
+        right = x - 1
 
-func clear() {
-	segments = [][2]point{}
-	points = []point{}
-	stage = PLOTTING_SEGMENTS
-}
+        if y > 0:
+            i = left
+            while i <= right:
+                if np.array_equal(raster_buffer[i, y - 1], old_color):
+                    while i < right and np.array_equal(raster_buffer[i, y - 1], old_color):
+                        i += 1
+                    if np.array_equal(raster_buffer[i, y - 1], old_color):
+                        stack.append((i, y - 1))
+                    else:
+                        stack.append((i - 1, y - 1))
+                i += 1
 
-func keyCallback(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
-	if action == glfw.Press {
-		if key == glfw.KeyEscape {
-			closeWindowCallback(w)
-		}
-		if key == glfw.KeySpace {
-			changeStateCallback()
-		}
-		if key == glfw.KeyDelete {
-			clear()
-		}
-	}
-}
-func makePoint(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mod glfw.ModifierKey) {
-	if stage == PLOTTING_SEGMENTS {
-		x, y := w.GetCursorPos()
-		log.Println(x, y, " :mouse")
-		points = append(points, point{x, y})
-	}
-}
+        if y < raster_buffer.shape[1] - 1:
+            i = left
+            while i <= right:
+                if np.array_equal(raster_buffer[i, y + 1], old_color):
+                    while i < right and np.array_equal(raster_buffer[i, y + 1], old_color):
+                        i += 1
+                    if np.array_equal(raster_buffer[i, y + 1], old_color):
+                        stack.append((i, y + 1))
+                    else:
+                        stack.append((i - 1, y + 1))
+                i += 1
 
-func deletePoint(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mod glfw.ModifierKey) {
-	if stage == PLOTTING_SEGMENTS && len(points) > 0 {
-		points = points[:len(points)-1]
-	}
-}
 
-func mouseCallback(w *glfw.Window, button glfw.MouseButton, action glfw.Action, mod glfw.ModifierKey) {
-	if button == glfw.MouseButtonLeft && action == glfw.Press {
-		makePoint(w, button, action, mod)
-	}
-	if button == glfw.MouseButtonRight && action == glfw.Press {
-		deletePoint(w, button, action, mod)
-	}
+def display(window):
+    global width, height, raster_buffer, points_rast
 
-}
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    glLoadIdentity()
+    glClearColor(1.0, 1.0, 1.0, 1.0)
 
-func initWindow() *glfw.Window {
-	glfw.WindowHint(glfw.ContextVersionMajor, 2)
-	glfw.WindowHint(glfw.ContextVersionMinor, 0)
-	window, err := glfw.CreateWindow(SIZE, SIZE, "LAB_5", nil, nil)
-	if err != nil {
-		panic(err)
-	}
+    new_width, new_height = glfw.get_framebuffer_size(window)
+    if new_width != width or new_height != height:
+        width, height = new_width, new_height
+        raster_buffer = np.zeros((height, width, 3), dtype=np.uint8)
+        points_rast = []
 
-	window.MakeContextCurrent()
+    glViewport(0, 0, width, height)
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    glMatrixMode(GL_MODELVIEW)
+    glLoadIdentity()
 
-	return window
-}
+    glDrawPixels(width, height, GL_RGB, GL_UNSIGNED_BYTE, raster_buffer)
 
-func main() {
-	runtime.LockOSThread()
+    glfw.swap_buffers(window)
 
-	if err := glfw.Init(); err != nil {
-		log.Fatalln("failed to initialize glfw:", err)
-	}
-	defer glfw.Terminate()
+    glfw.poll_events()
 
-	window := initWindow()
 
-	if err := gl.Init(); err != nil {
-		log.Fatalln("failed to initialize gl:", err)
-	}
+def main():
 
-	window.SetFramebufferSizeCallback(glfw.FramebufferSizeCallback(sizeCallback))
-	window.SetKeyCallback(glfw.KeyCallback(keyCallback))
-	window.SetMouseButtonCallback(glfw.MouseButtonCallback(mouseCallback))
+    if not glfw.init():
+        return
+    window = glfw.create_window(width, height, "Lab4", None, None)
+    if not window:
+        glfw.terminate()
+        return
 
-	w, h := window.GetFramebufferSize()
-	sizeCallback(window, w, h)
+    glfw.make_context_current(window)
+    glfw.set_key_callback(window, key_callback)
+    glfw.set_mouse_button_callback(window, mouse_callback)
 
-	for !window.ShouldClose() {
-		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-		cycleInit(window)
+    glEnable(GL_DEPTH_TEST)
 
-		drawZone()
-		drawSegments()
+    while not glfw.window_should_close(window):
+        display(window)
 
-		glfw.WaitEvents()
-		window.SwapBuffers()
-	}
-}
+    glfw.terminate()
+
+
+def mouse_callback(window, button, action, mods):
+    if action == glfw.PRESS:
+        x_pos, y_pos = glfw.get_cursor_pos(window)
+        x_pos = (x_pos - width / 2) * 2 / width
+        y_pos = (height / 2 - y_pos) * 2 / height
+
+        if button == glfw.MOUSE_BUTTON_LEFT:
+            points.append(Point(x_pos, y_pos))
+
+            x_pos, y_pos = glfw.get_cursor_pos(window)
+            points_rast.append(Point(height - y_pos, x_pos))
+            if len(points_rast) > 1:
+                for point in bresenham_line(points_rast[-1], points_rast[-2]):
+                    raster_buffer[int(point[0])][int(point[1])][0] = 255
+
+        if button == glfw.MOUSE_BUTTON_RIGHT:
+          
+            x_pos, y_pos = glfw.get_cursor_pos(window)
+            points.append(Point(height - y_pos, x_pos))
+            if len(points_rast) > 2:
+                for point in bresenham_line(points_rast[0], points_rast[-1]):
+                    raster_buffer[int(point[0])][int(point[1])][0] = 255
+
+
+def key_callback(window, key, scancode, action, mods):
+    global points, points_rast
+    if action == glfw.PRESS:
+        if key == glfw.KEY_SPACE:
+            points = []
+            points_rast = []
+        if key == glfw.KEY_R:
+            scanline_fill(int(points[-1].x), int(points[-1].y), [255, 255, 255])
+
+
+if __name__ == '__main__':
+    main()
