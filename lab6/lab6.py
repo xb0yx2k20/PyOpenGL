@@ -1,4 +1,5 @@
 import math
+from PIL import Image
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
@@ -14,13 +15,14 @@ position = np.array([0.0, 0.0, 0.0])
 velocity = np.array([0.01, 0.01, 0.01])
 
 # границы стенок
-bounds = np.array([10, 10, 10])
+bounds = np.array([5, 5, 5])
 
 def update_object_matrix(value):
     global object_matrix, position, velocity, bounds
-    k = 1
+    k = 0.1
     for i in object_matrix:
         i[0] += k
+        glutPostRedisplay()
         if i[0] > bounds[0] or i[0] > -bounds[0]:
             k *= -1
 
@@ -73,7 +75,7 @@ n = 3
 def draw_scene():
     global n
     global object_matrix, scale, move_sphere
-    if move_sphere:
+    if move_sphere == False:
         update_object_matrix(1)
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -115,6 +117,7 @@ def draw_scene():
 
     glPopMatrix()
     glutSwapBuffers()
+
 
 
 
@@ -172,7 +175,7 @@ glutReshapeFunc(lambda w, h: glViewport(0, 0, w, h))
 glutMouseFunc(handle_mouse_down)
 glutMotionFunc(handle_mouse_move)
 glutKeyboardFunc(handle_key_press)
-#glutTimerFunc(10, update_object_matrix, 0)
+
 glutReshapeFunc(reshape)
 glEnable(GL_CULL_FACE)
 glEnable(GL_LIGHTING)
@@ -193,4 +196,5 @@ glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR,( 0.5, 0.5, 0.5, 1.0))
 glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, 32)
 
 glutDisplayFunc(draw_scene)
+glutTimerFunc(10, update_object_matrix, 0)
 glutMainLoop()
