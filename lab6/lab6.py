@@ -11,20 +11,20 @@ last_mouse_x = None
 last_mouse_y = None
 move_sphere = False
 # глобальные переменные для начальной позиции и скорости
-position = np.array([0.0, 0.0, 0.0])
-velocity = np.array([0.01, 0.01, 0.01])
+positionX = 0
+positionY = 0
+velocity = 0
 
 # границы стенок
 bounds = np.array([5, 5, 5])
 
 def update_object_matrix(value):
-    global object_matrix, position, velocity, bounds
-    k = 0.1
-    for i in object_matrix:
-        i[0] += k
-        glutPostRedisplay()
-        if i[0] > bounds[0] or i[0] > -bounds[0]:
-            k *= -1
+    global object_matrix, positionX, positionY, velocity, bounds
+    if positionY < -2 and velocity < 0:
+        velocity = -velocity
+        positionY = -2
+    velocity += (-9.81) * deltaTime / 1000.0
+    positionY += velocity
 
 
 
