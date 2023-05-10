@@ -1,4 +1,5 @@
 import math
+import glfw
 from PIL import Image
 from OpenGL.GL import *
 from OpenGL.GLU import *
@@ -14,12 +15,13 @@ move_sphere = False
 positionX = 0
 positionY = 0
 velocity = 0
+deltaTime = 0
 
 # границы стенок
 bounds = np.array([5, 5, 5])
 
 def update_object_matrix(value):
-    global object_matrix, positionX, positionY, velocity, bounds
+    global object_matrix, positionX, positionY, velocity, bounds, deltaTime
     if positionY < -2 and velocity < 0:
         velocity = -velocity
         positionY = -2
@@ -74,21 +76,17 @@ def mouse_wheel_callback(wheel, direction, x, y):
 n = 3
 def draw_scene():
     global n
-    global object_matrix, scale, move_sphere
-    if move_sphere == False:
-        update_object_matrix(1)
+    global object_matrix, scale
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
-
     glPushMatrix()
     glMultMatrixf(object_matrix)
     glScalef(scale*0.25, scale*0.25, scale*0.25)
     globalMas = []
     vectors = []
-
     for i in range(n+1):
         theta = 2 * math.pi * i / n 
         for j in range(n+1):
@@ -97,11 +95,9 @@ def draw_scene():
             y = math.sin(theta) * math.sin(phi)
             z = math.cos(phi)
             vectors.append([x, y, z])
-            
         globalMas.append(vectors)
         vectors = []
     globalMas = np.array(globalMas)
-    print("\n\n")
     for i in range(len(globalMas) - 1):
         glColor3f(0, i % 2, 1)
         for j in range(len(globalMas[0]) - 1):
