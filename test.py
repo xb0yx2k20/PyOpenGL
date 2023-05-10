@@ -1,9 +1,8 @@
 from OpenGL.GL import *
 import glfw
 from PIL import Image
-import numpy as np
+import numpy
 import math
-object_matrix = np.identity(4)
 
 G = 9.81
 INITIAL_CUBE_VELOCITY = 0 # начальная скорость куба
@@ -90,12 +89,13 @@ def setup():
     glColorMaterial(GL_FRONT, GL_DIFFUSE)
     glShadeModel(GL_SMOOTH)
 
-    load_texture()
+    #load_texture()
 
+'''
 
 def load_texture():
-    img = Image.open("lab6/text.bmp")
-    img_data = np.array(list(img.getdata()), np.int8)
+    img = Image.open("text.bmp")
+    img_data = numpy.array(list(img.getdata()), numpy.int8)
 
     glBindTexture(GL_TEXTURE_2D, glGenTextures(1))
 
@@ -105,7 +105,7 @@ def load_texture():
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.size[0], img.size[1], 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
-
+'''
 
 def prepare():
     glClearColor(0, 0, 0, 0)
@@ -155,23 +155,11 @@ def display():
 
     theta += 0.9
 
-n = 3
-scale = 1.0
+object_matrix = numpy.identity(4)
+n = 5
 def draw_cube():
-    enable_texturing()
-    glBegin(GL_QUADS)
-
-
     global n
-    global object_matrix, scale
 
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-
-    glMatrixMode(GL_MODELVIEW)
-    glLoadIdentity()
-    glPushMatrix()
-    glMultMatrixf(object_matrix)
-    glScalef(scale*0.25, scale*0.25, scale*0.25)
     globalMas = []
     vectors = []
     for i in range(n+1):
@@ -184,11 +172,11 @@ def draw_cube():
             vectors.append([x, y, z])
         globalMas.append(vectors)
         vectors = []
-    globalMas = np.array(globalMas)
+    globalMas = numpy.array(globalMas)
     for i in range(len(globalMas) - 1):
-        glColor3f(0, i % 2, 1)
         for j in range(len(globalMas[0]) - 1):
             glBegin(GL_POLYGON)
+            enable_texturing()
             glNormal3f(1.0, 0.0, 0.0)
             glTexCoord2f(1.0, 0.0)
             glVertex3f(globalMas[i + 1][j][0], globalMas[i + 1][j][1], globalMas[i + 1][j][2])
@@ -199,15 +187,8 @@ def draw_cube():
             glTexCoord2f(1.0, 1.0)
             glVertex3f(globalMas[i + 1][j + 1][0], globalMas[i + 1][j + 1][1], globalMas[i + 1][j + 1][2])
             glEnd()
-    
+            disable_texturing()
 
-    
-
-    
-    
-
-    glEnd()
-    disable_texturing()
 
 
 def draw_plane():

@@ -1,90 +1,165 @@
-import math
+from OpenGL.GL import *
 import glfw
 from PIL import Image
-from OpenGL.GL import *
-from OpenGL.GLU import *
-from OpenGL.GLUT import *
-import numpy as np
+import numpy
+import math
 
-object_matrix = np.identity(4)
+G = 9.81
+INITIAL_CUBE_VELOCITY = 0 # начальная скорость куба
+CUBE_HEIGHT_RANGE = (0, 10000)
 
-last_mouse_x = None
-last_mouse_y = None
-move_sphere = False
-# глобальные переменные для начальной позиции и скорости
-positionX = 0
-positionY = 0
-velocity = 0
-deltaTime = 0
+cube_velocity = INITIAL_CUBE_VELOCITY
+cube_height = CUBE_HEIGHT_RANGE[1]
+theta = 0
 
-# границы стенок
-bounds = np.array([5, 5, 5])
-
-def update_object_matrix(value):
-    global object_matrix, positionX, positionY, velocity, bounds, deltaTime
-    if positionY < -2 and velocity < 0:
-        velocity = -velocity
-        positionY = -2
-    velocity += (-9.81) * deltaTime / 1000.0
-    positionY += velocity
+rot = 0
+scale = 1
+is_texturing_enabled = True
 
 
+def normalize(x, x_range, normalization_range):
+    a, b = normalization_range
+    x_min, x_max = x_range
+    return (b - a) * ((x - x_min) / (x_max - x_min)) + a
 
 
-def handle_mouse_down(button, state, x, y):
-    global mouse_down, last_mouse_x, last_mouse_y
-    if button == GLUT_LEFT_BUTTON and state == GLUT_DOWN:
-        last_mouse_x = x
-        last_mouse_y = y
-    
+def program():
+    if not glfw.init():
+        return
+    window = glfw.create_window(800, 800, "Lab6", None, None)
+    if not window:
+        glfw.terminate()
+        return
+    glfw.make_context_current(window)
+    glfw.set_key_callback(window, key_callback)
+    setup()
 
-def handle_mouse_move(x, y):
-    global object_matrix, last_mouse_x, last_mouse_y
-    delta_x = x - last_mouse_x
-    delta_y = y - last_mouse_y
-    rotation_y = np.identity(4)
-    rotation_x = np.identity(4)
-    rotation_y[0, 0] = np.cos(delta_x / 100.0)
-    rotation_y[2, 0] = -np.sin(delta_x / 100.0)
-    rotation_y[0, 2] = np.sin(delta_x / 100.0)
-    rotation_y[2, 2] = np.cos(delta_x / 100.0)
-    rotation_x[1, 1] = np.cos(delta_y / 100.0)
-    rotation_x[2, 1] = np.sin(delta_y / 100.0)
-    rotation_x[1, 2] = -np.sin(delta_y / 100.0)
-    rotation_x[2, 2] = np.cos(delta_y / 100.0)
-    object_matrix = np.dot(rotation_x, object_matrix)
-    object_matrix = np.dot(rotation_y, object_matrix)
-    last_mouse_x = x
-    last_mouse_y = y
-    print(object_matrix)
-    glutPostRedisplay()
+    while not glfw.window_should_close(window):
+        prepare()
+        display()
+        glfw.swap_buffers(window)
+        glfw.poll_events()
+
+    glfw.destroy_window(window)
+    glfw.terminate()
 
 
-scale = 1.0
+def key_callback(window, key, scancode, action, mods):
+    global rot, scale, is_texturing_enabled
+
+    if action == glfw.REPEAT or action == glfw.PRESS:
+        if key == glfw.KEY_RIGHT:
+            rot -= 3
+        if key == glfw.KEY_LEFT:
+            rot += 3
+        if key == glfw.KEY_UP:
+            scale += 0.02
+        if key == glfw.KEY_DOWN:
+            scale -= 0.02
+        if key == glfw.KEY_C:
+            is_texturing_enabled = not is_texturing_enabled
 
 
-def mouse_wheel_callback(wheel, direction, x, y):
-    global scale
-    if direction > 0:
-        scale += 0.1
-    else:
-        scale -= 0.1
-    glutPostRedisplay()
+def enable_texturing():
+    global is_texturing_enabled
+    if is_texturing_enabled:
+        glEnable(GL_TEXTURE_2D)
 
 
+def disable_texturing():
+    global is_texturing_enabled
+    if is_texturing_enabled:
+        glDisable(GL_TEXTURE_2D)
 
-n = 3
-def draw_scene():
-    global n
-    global object_matrix, scale
 
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+def setup():
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    glFrustum(-0.1, 0.1, -0.1, 0.1, 0.2, 1000)
 
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
+
+    glEnable(GL_DEPTH_TEST)
+    glEnable(GL_LIGHTING)
+    glEnable(GL_LIGHT0)
+    glEnable(GL_NORMALIZE)
+    glEnable(GL_COLOR_MATERIAL)
+
+    glColorMaterial(GL_FRONT, GL_DIFFUSE)
+    glShadeModel(GL_SMOOTH)
+
+    #load_texture()
+
+'''
+
+def load_texture():
+    img = Image.open("text.bmp")
+    img_data = numpy.array(list(img.getdata()), numpy.int8)
+
+    glBindTexture(GL_TEXTURE_2D, glGenTextures(1))
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.size[0], img.size[1], 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
+'''
+
+def prepare():
+    glClearColor(0, 0, 0, 0)
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+
+def display():
+    global CUBE_HEIGHT_RANGE, cube_velocity, cube_height, theta, rot, scale
     glPushMatrix()
-    glMultMatrixf(object_matrix)
-    glScalef(scale*0.25, scale*0.25, scale*0.25)
+    glRotatef(-60, 1, 0, 0)
+    glRotatef(33, 0, 0, 1)
+    glTranslatef(2, 3, -2.5)
+
+    glRotatef(rot, 0, 0, 1)
+    glScalef(scale, scale, scale)
+
+    glPushMatrix()
+
+    if cube_height - cube_velocity > CUBE_HEIGHT_RANGE[0]:
+        cube_height -= cube_velocity
+        if cube_velocity < 0 and cube_velocity + G > 0:
+            cube_velocity = 0
+        else:
+            cube_velocity += G
+    else:
+        cube_height = CUBE_HEIGHT_RANGE[0]
+        cube_velocity = -cube_velocity
+
+    glRotatef(45, 0, 0, 1)
+    glTranslatef(0, 0, normalize(cube_height, CUBE_HEIGHT_RANGE, (0.5, 1)))
+    glScalef(0.35, 0.35, 0.35)
+    draw_cube()
+
+    glPopMatrix()
+
+    glPushMatrix()
+    glRotatef(45, 0, 1, 0)
+    glLightfv(GL_LIGHT0, GL_POSITION, (0, 0, 1, 0))
+
+    glTranslatef(0, 0, 2)
+    glScalef(0.2, 0.2, 0.2)
+    glColor3f(1, 1, 1)
+    draw_plane()
+    glPopMatrix()
+
+    glPopMatrix()
+
+    theta += 0.9
+
+object_matrix = numpy.identity(4)
+n = 5
+def draw_cube():
+    global n
+
     globalMas = []
     vectors = []
     for i in range(n+1):
@@ -97,100 +172,58 @@ def draw_scene():
             vectors.append([x, y, z])
         globalMas.append(vectors)
         vectors = []
-    globalMas = np.array(globalMas)
+    globalMas = numpy.array(globalMas)
     for i in range(len(globalMas) - 1):
-        glColor3f(0, i % 2, 1)
         for j in range(len(globalMas[0]) - 1):
             glBegin(GL_POLYGON)
+            enable_texturing()
+            glNormal3f(1.0, 0.0, 0.0)
+            glTexCoord2f(1.0, 0.0)
             glVertex3f(globalMas[i + 1][j][0], globalMas[i + 1][j][1], globalMas[i + 1][j][2])
+            glTexCoord2f(0.0, 0.0)
             glVertex3f(globalMas[i][j][0], globalMas[i][j][1], globalMas[i][j][2])
+            glTexCoord2f(0.0, 1.0)
             glVertex3f(globalMas[i][j + 1][0], globalMas[i][j + 1][1], globalMas[i][j + 1][2])
+            glTexCoord2f(1.0, 1.0)
             glVertex3f(globalMas[i + 1][j + 1][0], globalMas[i + 1][j + 1][1], globalMas[i + 1][j + 1][2])
             glEnd()
-
- 
-    
-
-    glPopMatrix()
-    glutSwapBuffers()
+            disable_texturing()
 
 
 
+def draw_plane():
+    verticies = (
+        -1, -1, 0,
+        1, -1, 0,
+        1, 1, 0,
+        -1, 1, 0
+    )
 
-# глобальная переменная-флаг
-wireframe_mode = False
-ch = 0
-def handle_key_press(key, x, y):
-    global n, scale
-    if key == b'q':
-        n -= 1
-    if key == b'e':
-        n += 1
-    if key == b'm':
-        if ch == 0:
-            move_sphere = True
-            ch = 1
-        else:
-            move_sphere = False
-            ch = 0
-    global wireframe_mode
-    if key == b'x':
-        wireframe_mode = not wireframe_mode
-        if wireframe_mode:
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-            glDisable(GL_CULL_FACE)
-        else:
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
-            glEnable(GL_CULL_FACE)
-    elif key == b'o':
-        scale -= 0.1
-    elif key == b'p':
-        scale += 0.1
-    glutPostRedisplay()
+    normals = (
+        -1, -1, 3,
+        1, -1, 3,
+        1, 1, 3,
+        -1, 1, 3
+    )
+
+    glEnableClientState(GL_VERTEX_ARRAY)
+    glEnableClientState(GL_NORMAL_ARRAY)
+
+    glVertexPointer(3, GL_FLOAT, 0, verticies)
+    glNormalPointer(GL_FLOAT, 0, normals)
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4)
+
+    glDisableClientState(GL_VERTEX_ARRAY)
+    glDisableClientState(GL_NORMAL_ARRAY)
 
 
-
-def reshape(width, height):
-   aspect = float(width) / float(height)
-   glViewport(0, 0, width, height)
-   glMatrixMode(GL_PROJECTION)
-   glLoadIdentity()
-   if aspect > 1:
-      glOrtho(-aspect, aspect, -1.0, 1.0, -1.0, 1.0)
-   else:
-      glOrtho(-1.0, 1.0, -1.0/aspect, 1.0/aspect, -1.0, 1.0)
-   glMatrixMode(GL_MODELVIEW)
-   glLoadIdentity()
+def main():
+    try:
+        program()
+    except Exception as e:
+        print('Error')
+        print(e)
 
 
-glutInit()
-glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)    
-glutInitWindowSize(600, 600)
-glutCreateWindow(b"PyOpenGL Example")
-glutReshapeFunc(lambda w, h: glViewport(0, 0, w, h))
-glutMouseFunc(handle_mouse_down)
-glutMotionFunc(handle_mouse_move)
-glutKeyboardFunc(handle_key_press)
-
-glutReshapeFunc(reshape)
-glEnable(GL_CULL_FACE)
-glEnable(GL_LIGHTING)
-glEnable(GL_LIGHT0)
-
-ambient_light = [0.2, 0.2, 0.2, 1.0]
-glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambient_light)
-
-light_pos = [1.0, 1.0, 1.0, 0.0]
-glLightfv(GL_LIGHT0, GL_POSITION, light_pos)
-glLightfv(GL_LIGHT0, GL_AMBIENT, (0.4, 0.4, 0.4, 1.0))
-glLightfv(GL_LIGHT0, GL_DIFFUSE, (0.8, 0.8, 0.8, 1.0))
-glLightfv(GL_LIGHT0, GL_SPECULAR, (1.0, 1.0, 1.0, 1.0))
-
-
-glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, (1.0, 1.0, 1.0, 1.0))
-glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR,( 0.5, 0.5, 0.5, 1.0))
-glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, 32)
-
-glutDisplayFunc(draw_scene)
-glutTimerFunc(10, update_object_matrix, 0)
-glutMainLoop()
+if __name__ == '__main__':
+    main()
