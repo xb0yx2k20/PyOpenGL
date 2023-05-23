@@ -4,7 +4,7 @@ from PIL import Image
 import numpy
 import math
 
-G = 9.81
+G = 5
 INITIAL_CUBE_VELOCITY = 0 # начальная скорость куба
 CUBE_HEIGHT_RANGE = (0, 10000)
 
@@ -89,9 +89,8 @@ def setup():
     glColorMaterial(GL_FRONT, GL_DIFFUSE)
     glShadeModel(GL_SMOOTH)
 
-    #load_texture()
+    load_texture()
 
-'''
 
 def load_texture():
     img = Image.open("text.bmp")
@@ -105,7 +104,7 @@ def load_texture():
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.size[0], img.size[1], 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
-'''
+
 
 def prepare():
     glClearColor(0, 0, 0, 0)
@@ -156,7 +155,7 @@ def display():
     theta += 0.9
 
 object_matrix = numpy.identity(4)
-n = 5
+n = 10
 def draw_cube():
     global n
 
@@ -173,10 +172,11 @@ def draw_cube():
         globalMas.append(vectors)
         vectors = []
     globalMas = numpy.array(globalMas)
+    enable_texturing()
+
     for i in range(len(globalMas) - 1):
         for j in range(len(globalMas[0]) - 1):
             glBegin(GL_POLYGON)
-            enable_texturing()
             glNormal3f(1.0, 0.0, 0.0)
             glTexCoord2f(1.0, 0.0)
             glVertex3f(globalMas[i + 1][j][0], globalMas[i + 1][j][1], globalMas[i + 1][j][2])
@@ -187,7 +187,7 @@ def draw_cube():
             glTexCoord2f(1.0, 1.0)
             glVertex3f(globalMas[i + 1][j + 1][0], globalMas[i + 1][j + 1][1], globalMas[i + 1][j + 1][2])
             glEnd()
-            disable_texturing()
+    disable_texturing()
 
 
 
