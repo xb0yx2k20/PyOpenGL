@@ -93,7 +93,7 @@ def setup():
 
 
 def load_texture():
-    img = Image.open("text.bmp")
+    img = Image.open("lab6/text.bmp")
     img_data = numpy.array(list(img.getdata()), numpy.int8)
 
     glBindTexture(GL_TEXTURE_2D, glGenTextures(1))
