@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import math
+import time
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 #import sys
@@ -151,6 +152,7 @@ def draw():
 
 
 
+start_time = time.perf_counter()
 
 glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB)
 glutInitWindowSize(800, 800)
@@ -193,6 +195,6 @@ for i in range(12 * n * n):
     pointcolor.append([1, i%2, 0])
 
 
-
+print('total time:', time.perf_counter() - start_time)
 
 glutMainLoop()
